@@ -1,0 +1,26 @@
+version: '3'
+
+networks:
+    interna:
+        internal: true
+    externa:
+        internal: false
+
+services:
+    mariadb:
+        image: mariadb:latest
+        env_file: mariadb/.env
+        networks:
+            - interna
+
+    web:
+        build:
+            context: ./web
+        depends_on:
+            - mariadb
+        env_file: web/.env
+        ports:
+            - "80:80"
+        networks:
+            - interna
+            - externa
