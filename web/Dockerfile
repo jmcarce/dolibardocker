@@ -2,18 +2,22 @@
 
 FROM php:7.4-apache
 
-MAINTAINER McArce <jmcarce@XXXXXXX.XXX>
+LABEL maintainer="McArce <jmcarce@XXXXXXX.XXX>"
 
 ENV DOLIBARR_INSTALL_AUTO 1
 
-ENV DOLIBARR_DB_HOST mariadb
-ENV DOLIBARR_DB_USER dolibarr_user
-ENV DOLIBARR_DB_PASSWORD dolibarr_user_password
-ENV DOLIBARR_DB_NAME dolibarr_db
+# ARG para usar las variables de entorno definidas en el archivo .env
+ARG DOLIBARR_DB_HOST
+ARG DOLIBARR_DB_USER
+ARG DOLIBARR_DB_PASSWORD
+ARG DOLIBARR_DB_NAME
 
-ENV DOLIBARR_ADMIN_LOGIN admin
-ENV DOLIBARR_ADMIN_PASSWORD admin
-ENV DOLIBARR_URL_ROOT 'http://localhost'
+ARG DOLIBARR_ADMIN_LOGIN
+ARG DOLIBARR_ADMIN_PASSWORD
+
+ARG DOLIBARR_URL_ROOT
+
+# Variables de entorno para la imagen
 ENV DOLIBARR_NOCSRFCHECK 0
 
 ENV WWW_USER_ID 33
@@ -23,6 +27,7 @@ ENV PHP_INI_DATE_TIMEZONE 'Europe/Madrid'
 ENV PHP_INI_MEMORY_LIMIT 256M
 ENV PHP_INI_DIR /usr/local/etc/php
 
+# Instalar librerias de PHP
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
         libfreetype6-dev \
@@ -41,10 +46,11 @@ RUN apt-get update -y \
     && docker-php-ext-install -j$(nproc) ldap && \
     mv ${PHP_INI_DIR}/php.ini-production ${PHP_INI_DIR}/php.ini
 
+# Copiar archivo comprimido de Dolibarr en directorio /tmp/ de la imagen
 ENV DOLIBARR_VERSION 12.0.2
-
 COPY dolibarr-${DOLIBARR_VERSION}.zip /tmp/dolibarr.zip
 
+# Extraer los archivos del archivo dolibarr.zip en /tmp/dolibarr y copiarlos en el servidor apache
 RUN unzip -q -UU /tmp/dolibarr.zip -d /tmp/dolibarr/ \
 	&& cp -r /tmp/dolibarr/dolibarr-${DOLIBARR_VERSION}/htdocs/* /var/www/html/ \
 	&& ln -s /var/www/html /var/www/htdocs \
@@ -53,8 +59,14 @@ RUN unzip -q -UU /tmp/dolibarr.zip -d /tmp/dolibarr/ \
 	&& mkdir -p /var/www/documents \
 	&& chown -R www-data:www-data /var/www
 
+# El servidor apache abre el puerto 80 para comunicarse
 EXPOSE 80
-VOLUME /var/www/documents
 
+# Se crea el volumen dolibarrvolume para los documentos (iconos, fotografias...)
+# VOLUME dolibarrvolume:/var/www/documents
+
+# Copiar en la imagen el archivo de arranque para el contenedor docker-run.sh
 COPY docker-run.sh /usr/local/bin/
+
+# Iniciar por defecto el contenedor con el archivo docker-run.sh
 ENTRYPOINT ["/usr/local/bin/docker-run.sh"]

@@ -1,12 +1,17 @@
 #!/bin/bash
 
+#
+# Funcion de inicio de Dolibarr
+#
 function initDolibarr()
 {
-  local CURRENT_UID=$(id -u www-data)
-  local CURRENT_GID=$(id -g www-data)
-  usermod -u ${WWW_USER_ID} www-data
-  groupmod -g ${WWW_GROUP_ID} www-data
+  local CURRENT_UID=$(id -u www-data) # guardar el valor actual del id del usuario www-data
+  local CURRENT_GID=$(id -g www-data) # guardar el valor actual del id del grupo del usuario www-data
 
+  usermod -u ${WWW_USER_ID} www-data # cambiar el valor del id del usuario www-data: variable definida en Dockerfile
+  groupmod -g ${WWW_GROUP_ID} www-data # cambiar el valor del id del usuario www-data: variable definida en Dockerfile
+
+# Crear si no existe aun el directorio documents para los ficheros de usuario
   if [[ ! -d /var/www/documents ]]; then
     echo "[INIT] => create volume directory /var/www/documents ..."
     mkdir -p /var/www/documents
@@ -53,6 +58,9 @@ EOF
   fi
 }
 
+#
+# Funcion para esperar la disponibilidad del contenedor que contiene la base de datos
+#
 function waitForDataBase()
 {
   r=1
@@ -66,6 +74,9 @@ function waitForDataBase()
   done
 }
 
+#
+# Función para crear el archivo de bloqueo de la instalación 
+#
 function lockInstallation()
 {
   touch /var/www/documents/install.lock
@@ -73,38 +84,48 @@ function lockInstallation()
   chmod 400 /var/www/documents/install.lock
 }
 
+#
+# Función para inicializar la base de datos
+#
 function initializeDatabase()
 {
-  for fileSQL in /var/www/html/install/mysql/tables/*.sql; do
+# Ejecutar scripts sql de install/mysql/tables/ en la base de datos - excepto los scripts *.key.sql
+    for fileSQL in /var/www/html/install/mysql/tables/*.sql; do
     if [[ ${fileSQL} != *.key.sql ]]; then
       echo "Importing table from `basename ${fileSQL}` ..."
-      sed -i 's/--.*//g;' ${fileSQL} # remove all comment
+      sed -i 's/--.*//g;' ${fileSQL} # quitar comentarios del archivo antes de ejecutar
       mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} < ${fileSQL}
     fi
   done
 
+# Ejecutar scripts sql de install/mysql/tables/*.key.sql en la base de datos  
   for fileSQL in /var/www/html/install/mysql/tables/*.key.sql; do
     echo "Importing table key from `basename ${fileSQL}` ..."
-    sed -i 's/--.*//g;' ${fileSQL}
+    sed -i 's/--.*//g;' ${fileSQL} # quitar comentarios del archivo antes de ejecutar
     mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} < ${fileSQL} > /dev/null 2>&1
   done
 
+# Ejecutar scripts sql de install/mysql/functions/*.sql en la base de datos
   for fileSQL in /var/www/html/install/mysql/functions/*.sql; do
     echo "Importing `basename ${fileSQL}` ..."
-    sed -i 's/--.*//g;' ${fileSQL}
+    sed -i 's/--.*//g;' ${fileSQL} # quitar comentarios del archivo antes de ejecutar
     mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} < ${fileSQL} > /dev/null 2>&1
   done
 
+# Ejecutar los scripts install/mysql/data/*.sql en la base de datos 
   for fileSQL in /var/www/html/install/mysql/data/*.sql; do
     echo "Importing data from `basename ${fileSQL}` ..."
-    sed -i 's/--.*//g;' ${fileSQL}
+    sed -i 's/--.*//g;' ${fileSQL} # quitar comentarios del archivo antes de ejecutar
     mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} < ${fileSQL} > /dev/null 2>&1
   done
 
+# Crear la cuenta del administrador de la base de datos
   echo "Create SuperAdmin account ..."
+  # encriptar con md5sum. usar echo -n para no imprimir un salto de linea al final de la DOLIBARR_ADMIN_PASSWORD
   pass_crypted=`echo -n ${DOLIBARR_ADMIN_PASSWORD} | md5sum | awk '{print $1}'`
   mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} -e "INSERT INTO llx_user (entity, login, pass_crypted, lastname, admin, statut) VALUES (0, '${DOLIBARR_ADMIN_LOGIN}', '${pass_crypted}', 'SuperAdmin', 1, 1);" > /dev/null 2>&1
 
+# Borrar y establecer constantes en la tabla llx_const
   echo "Set some default const ..."
   mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} -e "DELETE FROM llx_const WHERE name='MAIN_VERSION_LAST_INSTALL';" > /dev/null 2>&1
   mysql -u ${DOLIBARR_DB_USER} -p${DOLIBARR_DB_PASSWORD} -h ${DOLIBARR_DB_HOST} ${DOLIBARR_DB_NAME} -e "DELETE FROM llx_const WHERE name='MAIN_NOT_INSTALLED';" > /dev/null 2>&1
@@ -147,6 +168,9 @@ function migrateDatabase()
   return 0
 }
 
+#
+# Funcion de arranque de la instalacion que ejecuta las demás funciones
+#
 function run()
 {
   initDolibarr

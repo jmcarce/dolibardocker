@@ -1,3 +1,8 @@
 resetear_todo.sh
+web/documents
+mariadb/data
 *.env
+.dockerignore
 !*example.env
+dolibarr*.zip
+
