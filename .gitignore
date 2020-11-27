@@ -1,8 +1,13 @@
+# Script de inicialización
 resetear_todo.sh
+
+# Carpetas de volumenes Docker
 web/documents
 mariadb/data
-*.env
-.dockerignore
-!*example.env
-dolibarr*.zip
 
+# Archivos de variables de entorno
+*.env
+!*example.env
+
+# Archivo fuente Dolibarr
+dolibarr*.zip

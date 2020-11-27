@@ -17,6 +17,7 @@ function initDolibarr()
     mkdir -p /var/www/documents
   fi
 
+# Configurar PHP en [PHP]/conf.d/dolibarr-php.ini 
   echo "[INIT] => update PHP Config ..."
   cat > ${PHP_INI_DIR}/conf.d/dolibarr-php.ini << EOF
 date.timezone = ${PHP_INI_DATE_TIMEZONE}
