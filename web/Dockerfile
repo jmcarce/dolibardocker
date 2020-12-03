@@ -6,6 +6,9 @@ LABEL maintainer="McArce <jmcarce@XXXXXXX.XXX>"
 
 ENV DOLIBARR_INSTALL_AUTO 1
 
+# Versión de Dolibarr que se va a grabar en la imagen
+ENV DOLIBARR_VERSION 12.0.3
+
 # ARG para usar las variables de entorno definidas en el archivo .env
 ARG DOLIBARR_DB_HOST
 ARG DOLIBARR_DB_USER
@@ -47,7 +50,7 @@ RUN apt-get update -y \
     mv ${PHP_INI_DIR}/php.ini-production ${PHP_INI_DIR}/php.ini
 
 # Copiar archivo comprimido de Dolibarr en directorio /tmp/ de la imagen
-ENV DOLIBARR_VERSION 12.0.2
+
 COPY dolibarr-${DOLIBARR_VERSION}.zip /tmp/dolibarr.zip
 
 # Extraer los archivos del archivo dolibarr.zip en /tmp/dolibarr y copiarlos en el servidor apache
